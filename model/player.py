@@ -1,76 +1,101 @@
-from model.world import TILE_SIZE, WorldItem
+from model.pyxel_utlis import PyxelSounds
+from model.utils import round_float_if_close
+from model.world import TILE_SIZE, WorldItem, sprites_collide
+
 
 class Player:
     IMG = 0
     WIDTH = 8
     HEIGHT = 8
     DX = 0.5
+    ROUNDING_ERROR_DELTA = 0.1
 
     def __init__(self, world):
-        self.x = world.player_grid_x * TILE_SIZE
-        self.y = world.player_grid_y * TILE_SIZE
+        self.__x = world.player_grid_x * TILE_SIZE
+        self.__y = world.player_grid_y * TILE_SIZE
         self.world = world
+        self.pyxel_sounds = PyxelSounds()
 
-       
+    def stop_moving(self):
+        self.__x = round_float_if_close(self.__x, self.ROUNDING_ERROR_DELTA)
+        self.__y = round_float_if_close(self.__y, self.ROUNDING_ERROR_DELTA)
+
+    # dx should be 1 or -1 (for right or left)
+    def move_horizontally(self, dx):
+        tile_y = int(self.__y / TILE_SIZE)
+        tile_x = int(self.__x / TILE_SIZE)
+
+        new_x = self.__x + dx * self.DX
+
+        new_tile_x = tile_x + dx
+
+        if new_tile_x < 0 or new_tile_x >= self.world.WIDTH:
+            return
+
+        # We always round "Down", so we can consider possible "up" and "bottom" tiles
+        next_tile_up = self.world.world_map[tile_y][new_tile_x]
+        next_tile_bottom = self.world.world_map[tile_y + 1][new_tile_x]
+
+        if (
+            next_tile_up == WorldItem.WALL
+            and sprites_collide(
+                new_x, self.__y, new_tile_x * TILE_SIZE, tile_y * TILE_SIZE
+            )
+        ) or (
+            next_tile_bottom == WorldItem.WALL
+            and sprites_collide(
+                new_x, self.__y, new_tile_x * TILE_SIZE, (tile_y + 1) * TILE_SIZE
+            )
+        ):
+            self.pyxel_sounds.play_hit_wall_sound()
+            return
+
+        self.__x = new_x       
+
     def move_left(self):
-        tile_y = int(self.y / TILE_SIZE)
-        tile_x = int(self.x / TILE_SIZE)
-
-        new_x = self.x - self.DX
-        new_tile_x = tile_x - 1
-
-        next_tile = self.world.world_map[tile_y][new_tile_x]
-        if next_tile == WorldItem.WALL:
-            if new_tile_x * TILE_SIZE + TILE_SIZE > new_x:
-                # collides with the left wall, so we can't move
-                return
-
-        self.x = new_x
+        self.move_horizontally(-1)
 
     def move_right(self):
-        tile_y = int(self.y / TILE_SIZE)
-        tile_x = int(self.x / TILE_SIZE)
+        self.move_horizontally(1)
 
-        new_x = self.x + self.DX
-        new_tile_x = tile_x + 1
+    # dy should be 1 or -1 (for down or up)
+    def move_vertically(self, dy):
+        tile_y = int(self.__y / TILE_SIZE)
+        tile_x = int(self.__x / TILE_SIZE)
 
-        next_tile = self.world.world_map[tile_y][new_tile_x]
-        if next_tile == WorldItem.WALL:
-            if new_x + TILE_SIZE > new_tile_x * TILE_SIZE:
-                # collides with the right wall, so we can't move
-                return
-            
-        self.x = new_x
+        new_y = self.__y + dy * self.DX
+        new_tile_y = tile_y + dy
+
+        # We always round "Down", so we can consider possible "left" and "right" tiles
+        next_tile_left = self.world.world_map[new_tile_y][tile_x]
+        next_tile_right = self.world.world_map[new_tile_y][tile_x + 1]
+
+        if (
+            next_tile_left == WorldItem.WALL
+            and sprites_collide(
+                self.__x, new_y, tile_x * TILE_SIZE, new_tile_y * TILE_SIZE
+            )
+        ) or (
+            next_tile_right == WorldItem.WALL
+            and sprites_collide(
+                self.__x, new_y, (tile_x + 1) * TILE_SIZE, new_tile_y * TILE_SIZE
+            )
+        ):
+            self.pyxel_sounds.play_hit_wall_sound()
+            return
+
+        self.__y = new_y
 
     def move_up(self):
-        tile_y = int(self.y / TILE_SIZE)
-        tile_x = int(self.x / TILE_SIZE)
-
-        new_y = self.y - self.DX
-        new_tile_y = tile_y - 1
-
-        next_tile = self.world.world_map[new_tile_y][tile_x]
-        if next_tile == WorldItem.WALL:
-            if new_tile_y * TILE_SIZE + TILE_SIZE > new_y:
-                # collides with the up wall, so we can't move
-                return
-            
-        self.y = new_y
+        self.move_vertically(-1)
 
     def move_down(self):
-        tile_y = int(self.y / TILE_SIZE)
-        tile_x = int(self.x / TILE_SIZE)
+        self.move_vertically(1)
 
-        new_y = self.y + self.DX
-        new_tile_y = tile_y + 1
-
-        next_tile = self.world.world_map[new_tile_y][tile_x]
-        if next_tile == WorldItem.WALL:
-            if new_y + TILE_SIZE > new_tile_y * TILE_SIZE:
-                # collides with the bottom wall, so we can't move
-                return
-            
-        self.y = new_y
-
-
-
+    @property
+    def x(self):
+        return int(self.__x)
+    
+    @property
+    def y(self):
+        return int(self.__y)

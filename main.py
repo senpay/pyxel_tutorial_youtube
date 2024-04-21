@@ -24,8 +24,10 @@ class App:
             self.player.move_up()
         elif pyxel.btn(pyxel.KEY_DOWN):
             self.player.move_down()        
-        if pyxel.btnp(pyxel.KEY_Q):
+        elif pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
+        else:
+            self.player.stop_moving()
 
     def draw(self):
         pyxel.cls(0)
