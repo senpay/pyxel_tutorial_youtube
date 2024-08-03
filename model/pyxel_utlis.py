@@ -7,6 +7,7 @@ class PyxelSounds:
 
     def __init__(self):
         self.__hit_wall_sound_framestamp = 0
+        pyxel.playm(0, loop=True)
 
     def play_hit_wall_sound(self):
         current_frame = pyxel.frame_count
